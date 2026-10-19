@@ -27,9 +27,17 @@ function Assert-Admin {
 
 function Probe-Network {
   $adapter = Get-NetAdapter -Name $AdapterName -ErrorAction Stop
-  $config = Get-NetIPConfiguration -InterfaceAlias $AdapterName -ErrorAction Stop
+  $config = $null
+  try {
+    $config = Get-NetIPConfiguration -InterfaceIndex $adapter.ifIndex -ErrorAction Stop
+  } catch {
+    # An adapter can exist before the TCP/IP interface is configured.
+    Write-Warning "No TCP/IP configuration available for $AdapterName; gateway probe skipped."
+  }
   $gateway = ''
-  if ($config.IPv4DefaultGateway) { $gateway = [string]$config.IPv4DefaultGateway.NextHop }
+  if ($config -and $config.IPv4DefaultGateway) {
+    $gateway = [string]$config.IPv4DefaultGateway.NextHop
+  }
   $adapterUp = ($adapter.Status -eq 'Up')
   $gatewayReachable = $false
   $upstreamReachable = $false
